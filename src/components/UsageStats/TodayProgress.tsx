@@ -5,6 +5,7 @@ import { useUsageLive } from "@/hooks/useUsageLive";
 import type { DayStats } from "@/types/usage";
 
 interface TodayProgressProps {
+  userId: number;
   dailyLimit: number;
   todayStats: DayStats;
 }
@@ -15,8 +16,8 @@ function getBarColor(pct: number): string {
   return "bg-green-500";
 }
 
-export function TodayProgress({ dailyLimit, todayStats }: TodayProgressProps) {
-  const live = useUsageLive(1);
+export function TodayProgress({ userId, dailyLimit, todayStats }: TodayProgressProps) {
+  const live = useUsageLive(userId);
   const committed = live.connected ? live.committed : todayStats.committed;
   const reserved = live.connected ? live.reserved : todayStats.reserved;
   const pct = dailyLimit > 0 ? Math.min((committed / dailyLimit) * 100, 100) : 0;
@@ -30,7 +31,7 @@ export function TodayProgress({ dailyLimit, todayStats }: TodayProgressProps) {
         <span className="flex items-center gap-1.5 text-xs text-gray-500">
           {live.connected && (
             <>
-              <span className="relative flex h-2 w-2">
+              <span className="relative flex h-2 w-2" role="status" aria-label="Live connection active">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
               </span>
@@ -43,6 +44,7 @@ export function TodayProgress({ dailyLimit, todayStats }: TodayProgressProps) {
       <Progress.Root
         className="relative h-3 w-full overflow-hidden rounded-full bg-gray-100"
         value={pct}
+        aria-label={`Usage: ${committed} of ${dailyLimit} turns`}
       >
         <Progress.Indicator
           className={`h-full transition-all duration-300 ${getBarColor(pct)}`}
@@ -52,7 +54,7 @@ export function TodayProgress({ dailyLimit, todayStats }: TodayProgressProps) {
 
       {reserved > 0 && (
         <p className="mt-2 text-xs text-gray-500">
-          ⏳ {reserved} reserved
+          <span aria-label={`${reserved} reserved`}>⏳ {reserved} reserved</span>
         </p>
       )}
     </div>

@@ -15,9 +15,22 @@ export function DaysSelect({ value, onChange }: DaysSelectProps) {
       value={String(value)}
       onValueChange={(v) => onChange(Number(v))}
     >
-      <Select.Trigger className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50">
+      <Select.Trigger
+        className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-50"
+        aria-label="Select time period"
+      >
         <Select.Value />
-        <Select.Icon className="text-gray-400">▾</Select.Icon>
+        <Select.Icon>
+          <svg
+            className="h-4 w-4 text-gray-400"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </Select.Icon>
       </Select.Trigger>
 
       <Select.Portal>

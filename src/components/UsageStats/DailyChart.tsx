@@ -44,7 +44,7 @@ function CustomTooltip({
   payload?: { payload: ChartDataPoint }[];
   label?: string;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || !payload[0]?.payload) return null;
   const data = payload[0].payload;
   return (
     <div className="rounded border border-gray-200 bg-white p-3 text-sm shadow-lg">
@@ -99,6 +99,31 @@ export const DailyChart = React.memo(function DailyChart({
           />
         </BarChart>
       </ResponsiveContainer>
+
+      {/* Screen reader fallback — hidden visually, accessible to AT */}
+      <table className="sr-only">
+        <caption>Daily usage chart data</caption>
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Committed</th>
+            <th>Reserved</th>
+            <th>Limit</th>
+            <th>Utilization</th>
+          </tr>
+        </thead>
+        <tbody>
+          {chartData.map((d) => (
+            <tr key={d.date}>
+              <td>{d.date}</td>
+              <td>{d.committed}</td>
+              <td>{d.reserved}</td>
+              <td>{d.limit}</td>
+              <td>{d.utilization}%</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 });

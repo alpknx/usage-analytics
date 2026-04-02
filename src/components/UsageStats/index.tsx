@@ -6,12 +6,14 @@ import { DailyChart } from "./DailyChart";
 import { SummaryCards } from "./SummaryCards";
 import { TodayProgress } from "./TodayProgress";
 import { DaysSelect } from "./DaysSelect";
+import { ErrorBoundary } from "./ErrorBoundary";
 
 interface UsageStatsProps {
   days?: number;
+  userId?: number;
 }
 
-export function UsageStats({ days: initialDays = 7 }: UsageStatsProps) {
+export function UsageStats({ days: initialDays = 7, userId = 1 }: UsageStatsProps) {
   const [days, setDays] = useState(initialDays);
   const [data, setData] = useState<StatsResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -21,7 +23,7 @@ export function UsageStats({ days: initialDays = 7 }: UsageStatsProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/usage/stats?days=${days}&userId=1`);
+      const res = await fetch(`/api/usage/stats?days=${days}&userId=${userId}`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? `HTTP ${res.status}`);
@@ -39,7 +41,7 @@ export function UsageStats({ days: initialDays = 7 }: UsageStatsProps) {
     } finally {
       setLoading(false);
     }
-  }, [days]);
+  }, [days, userId]);
 
   useEffect(() => {
     fetchStats();
@@ -63,19 +65,25 @@ export function UsageStats({ days: initialDays = 7 }: UsageStatsProps) {
 
   if (!data) return null;
 
+  const todayStats = data.days[data.days.length - 1];
+  if (!todayStats) return null;
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">Usage overview</h2>
-        <DaysSelect value={days} onChange={setDays} />
+    <ErrorBoundary>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-gray-800">Usage overview</h2>
+          <DaysSelect value={days} onChange={setDays} />
+        </div>
+        <TodayProgress
+          userId={userId}
+          dailyLimit={data.daily_limit}
+          todayStats={todayStats}
+        />
+        <SummaryCards summary={data.summary} />
+        <DailyChart days={data.days} dailyLimit={data.daily_limit} />
       </div>
-      <TodayProgress
-        dailyLimit={data.daily_limit}
-        todayStats={data.days[data.days.length - 1]}
-      />
-      <SummaryCards summary={data.summary} />
-      <DailyChart days={data.days} dailyLimit={data.daily_limit} />
-    </div>
+    </ErrorBoundary>
   );
 }
 
@@ -84,7 +92,7 @@ function Skeleton() {
     <div className="space-y-6">
       <div className="h-8 w-48 animate-pulse rounded bg-gray-200" />
       <div className="h-4 w-64 animate-pulse rounded bg-gray-200" />
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         {Array.from({ length: 4 }).map((_, i) => (
           <div key={i} className="h-24 animate-pulse rounded-lg bg-gray-200" />
         ))}
