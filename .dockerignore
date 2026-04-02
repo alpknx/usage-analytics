@@ -1,0 +1,8 @@
+node_modules
+.next
+.env*
+prisma/migrations
+.git
+.gitignore
+README.md
+docker-compose.yml
