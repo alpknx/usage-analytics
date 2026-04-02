@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Existing models (do not modify) ───────────────────────────────
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  plan      String   @default("starter")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  events DailyUsageEvent[]
+  caches DailyUsageCache[]
+
+  @@map("users")
+}
+
+model DailyUsageEvent {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      String   // "committed" | "reserved"
+  dateKey   String   @map("date_key") // "YYYY-MM-DD" in UTC
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId, dateKey])
+  @@map("daily_usage_events")
+}
+
+// ─── New model: daily usage cache ──────────────────────────────────
+
+model DailyUsageCache {
+  id             Int      @id @default(autoincrement())
+  userId         Int      @map("user_id")
+  dateKey        String   @map("date_key") // "YYYY-MM-DD" in UTC
+  committedCount Int      @default(0) @map("committed_count")
+  reservedCount  Int      @default(0) @map("reserved_count")
+  isTodayCache   Boolean  @default(false) @map("is_today_cache")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([userId, dateKey])
+  @@index([userId, dateKey])
+  @@map("daily_usage_cache")
+}
