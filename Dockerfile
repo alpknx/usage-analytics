@@ -1,12 +1,12 @@
 # ─── Stage 1: Install production dependencies ──────────────────────
-FROM node:20-alpine AS deps
+FROM node:20.18-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
 RUN npm ci --omit=dev
 
 # ─── Stage 2: Build the application ────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20.18-alpine AS builder
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY prisma ./prisma/
@@ -16,7 +16,7 @@ RUN npx prisma generate
 RUN npm run build
 
 # ─── Stage 3: Production runner ────────────────────────────────────
-FROM node:20-alpine AS runner
+FROM node:20.18-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

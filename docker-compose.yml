@@ -1,16 +1,13 @@
 services:
   postgres:
     image: postgres:15-alpine
-    environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: fidant_dev
+    env_file: .env.docker
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U user -d fidant_dev"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -19,9 +16,10 @@ services:
     build: .
     ports:
       - "3000:3000"
+    env_file: .env.docker
     environment:
-      DATABASE_URL: "postgresql://user:password@postgres:5432/fidant_dev"
-      DIRECT_URL: "postgresql://user:password@postgres:5432/fidant_dev"
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
+      DIRECT_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}"
     depends_on:
       postgres:
         condition: service_healthy
