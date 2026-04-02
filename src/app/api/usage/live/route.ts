@@ -1,20 +1,21 @@
 import { prisma } from "@/lib/prisma";
 import { getRawDayStats } from "@/lib/usage";
+import { getUserId } from "@/lib/auth";
 import type { SSEEvent } from "@/types/usage";
 
 const POLL_INTERVAL_MS = 5_000;
 const KEEPALIVE_INTERVAL_MS = 15_000;
 
 export async function GET(req: Request) {
-  // 1. Auth check
-  const userIdRaw = req.headers.get("x-user-id");
-  const userId = Number(userIdRaw);
-  if (!userIdRaw || !Number.isInteger(userId) || userId <= 0) {
+  // 1. Auth check: header x-user-id or query param ?userId=
+  const parsedUserId = getUserId(req);
+  if (!parsedUserId) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
+  const userId: number = parsedUserId;
 
   // Verify user exists before opening a long-lived stream
   const user = await prisma.user.findUnique({

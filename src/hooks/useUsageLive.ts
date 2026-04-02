@@ -26,10 +26,9 @@ export function useUsageLive(userId: number): UsageLiveState {
   const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
-    // EventSource does not support custom headers natively.
-    // In production, auth would come from cookies/session.
-    // For dev, we rely on a middleware or query param fallback.
-    const es = new EventSource("/api/usage/live");
+    // EventSource does not support custom headers, so we pass userId
+    // as a query param. In production, auth would come from cookies/session.
+    const es = new EventSource(`/api/usage/live?userId=${userId}`);
 
     esRef.current = es;
 

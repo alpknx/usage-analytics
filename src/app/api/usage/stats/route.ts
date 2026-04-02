@@ -4,12 +4,12 @@ import { PLAN_LIMITS } from "@/lib/constants";
 import { StatsQuerySchema } from "@/types/usage";
 import type { PlanTier, StatsResponse } from "@/types/usage";
 import { getStatsForRange, computeSummary } from "@/lib/usage";
+import { getUserId } from "@/lib/auth";
 
 export async function GET(req: Request) {
-  // Auth
-  const userIdRaw = req.headers.get("x-user-id");
-  const userId = Number(userIdRaw);
-  if (!userIdRaw || !Number.isInteger(userId) || userId <= 0) {
+  // Auth: header x-user-id or query param ?userId=
+  const userId = getUserId(req);
+  if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

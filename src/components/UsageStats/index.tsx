@@ -21,9 +21,7 @@ export function UsageStats({ days: initialDays = 7 }: UsageStatsProps) {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/usage/stats?days=${days}`, {
-        headers: { "x-user-id": "1" },
-      });
+      const res = await fetch(`/api/usage/stats?days=${days}&userId=1`);
       if (!res.ok) {
         const body = await res.json().catch(() => null);
         throw new Error(body?.error ?? `HTTP ${res.status}`);
