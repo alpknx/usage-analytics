@@ -66,11 +66,18 @@ export interface CacheRow {
   updatedAt: Date;
 }
 
-// ─── SSE event for live endpoint ───────────────────────────────────
+// ─── SSE events for live endpoint ──────────────────────────────────
 
-export interface SSEEvent {
+export interface SSEUpdateEvent {
   type: "update";
   date: string;
   committed: number;
   reserved: number;
 }
+
+export interface SSEErrorEvent {
+  type: "error";
+  message: string;
+}
+
+export type SSEEvent = SSEUpdateEvent | SSEErrorEvent;

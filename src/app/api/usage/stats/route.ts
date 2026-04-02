@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { PLAN_LIMITS } from "@/lib/constants";
+import { PLAN_LIMITS, isValidPlan } from "@/lib/constants";
 import { StatsQuerySchema } from "@/types/usage";
-import type { PlanTier, StatsResponse } from "@/types/usage";
+import type { StatsResponse } from "@/types/usage";
 import { getStatsForRange, computeSummary } from "@/lib/usage";
 import { getUserId } from "@/lib/auth";
 
@@ -34,8 +34,11 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
-  const plan = user.plan as PlanTier;
-  const dailyLimit = PLAN_LIMITS[plan] ?? PLAN_LIMITS.starter;
+  if (!isValidPlan(user.plan)) {
+    return NextResponse.json({ error: "Invalid plan configuration" }, { status: 500 });
+  }
+  const plan = user.plan;
+  const dailyLimit = PLAN_LIMITS[plan];
 
   // Build date range (oldest → newest)
   const dates: string[] = [];
@@ -47,7 +50,7 @@ export async function GET(req: Request) {
   }
 
   const dayStats = await getStatsForRange(userId, dates, dailyLimit);
-  const summary = computeSummary(dayStats, dailyLimit);
+  const summary = computeSummary(dayStats);
 
   const response: StatsResponse = {
     plan,

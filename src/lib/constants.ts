@@ -6,6 +6,12 @@ export const PLAN_LIMITS: Record<PlanTier, number> = {
   executive: 500,
 } as const;
 
+const VALID_PLANS = new Set<string>(Object.keys(PLAN_LIMITS));
+
+export function isValidPlan(plan: string): plan is PlanTier {
+  return VALID_PLANS.has(plan);
+}
+
 /** Cache TTL for today's cache row in seconds */
 export const CACHE_TTL_SECONDS = 60;
 

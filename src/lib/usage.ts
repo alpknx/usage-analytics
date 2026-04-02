@@ -110,8 +110,8 @@ export async function getStatsForRange(
 
     // Cache miss or stale — compute from events
     const raw = await getRawDayStats(userId, dateKey);
-    // Fire-and-forget cache write
-    upsertCache(userId, dateKey, raw);
+    // Fire-and-forget cache write — catch to prevent unhandled rejection
+    void upsertCache(userId, dateKey, raw).catch(() => {});
 
     results.push({
       date: dateKey,
@@ -140,7 +140,7 @@ export function computeStreak(days: DayStats[]): number {
   return streak;
 }
 
-export function computeSummary(days: DayStats[], limit: number): Summary {
+export function computeSummary(days: DayStats[]): Summary {
   const totalCommitted = days.reduce((sum, d) => sum + d.committed, 0);
   const avgDaily =
     days.length > 0 ? Math.round((totalCommitted / days.length) * 10) / 10 : 0;
