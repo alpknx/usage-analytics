@@ -5,6 +5,7 @@ import type { SSEEvent } from "@/types/usage";
 
 const POLL_INTERVAL_MS = 5_000;
 const KEEPALIVE_INTERVAL_MS = 15_000;
+const MAX_STREAM_LIFETIME_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function GET(req: Request) {
   // 1. Auth check: header x-user-id or query param ?userId=
@@ -41,16 +42,20 @@ export async function GET(req: Request) {
     async start(controller) {
       let lastCommitted = -1;
       let lastReserved = -1;
+      let lastMaxCreatedAt: Date | null = null;
       let closed = false;
 
-      function sendEvent(event: SSEEvent): void {
+      function send(chunk: string): void {
         if (closed) return;
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+        controller.enqueue(encoder.encode(chunk));
+      }
+
+      function sendEvent(event: SSEEvent): void {
+        send(`data: ${JSON.stringify(event)}\n\n`);
       }
 
       function sendKeepalive(): void {
-        if (closed) return;
-        controller.enqueue(encoder.encode(": keepalive\n\n"));
+        send(": keepalive\n\n");
       }
 
       function cleanup(): void {
@@ -58,6 +63,7 @@ export async function GET(req: Request) {
         closed = true;
         clearInterval(pollTimer);
         clearInterval(keepaliveTimer);
+        clearTimeout(lifetimeTimer);
         try {
           controller.close();
         } catch {
@@ -68,6 +74,31 @@ export async function GET(req: Request) {
       async function poll(): Promise<void> {
         if (closed) return;
         try {
+          // Optimization: check if any new events exist before running full groupBy.
+          // A single MAX(created_at) lookup on the indexed column is much cheaper.
+          const latest = await prisma.dailyUsageEvent.findFirst({
+            where: { userId, dateKey: todayKey() },
+            orderBy: { createdAt: "desc" },
+            select: { createdAt: true },
+          });
+
+          // No events at all for today — send zeros if not sent yet
+          if (!latest) {
+            if (lastCommitted !== 0 || lastReserved !== 0) {
+              lastCommitted = 0;
+              lastReserved = 0;
+              lastMaxCreatedAt = null;
+              sendEvent({ type: "update", date: todayKey(), committed: 0, reserved: 0 });
+            }
+            return;
+          }
+
+          // Skip full query if no new rows since last poll
+          if (lastMaxCreatedAt && latest.createdAt.getTime() === lastMaxCreatedAt.getTime()) {
+            return;
+          }
+          lastMaxCreatedAt = latest.createdAt;
+
           const stats = await getRawDayStats(userId, todayKey());
           if (
             stats.committed !== lastCommitted ||
@@ -83,14 +114,8 @@ export async function GET(req: Request) {
             });
           }
         } catch {
-          // DB error during poll → send error event, close stream
-          if (!closed) {
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: "error", message: "Poll failed" })}\n\n`
-              )
-            );
-          }
+          // DB error during poll → send typed error event, close stream
+          sendEvent({ type: "error", message: "Poll failed" });
           cleanup();
         }
       }
@@ -100,6 +125,10 @@ export async function GET(req: Request) {
 
       const pollTimer = setInterval(poll, POLL_INTERVAL_MS);
       const keepaliveTimer = setInterval(sendKeepalive, KEEPALIVE_INTERVAL_MS);
+
+      // #8: Idle timeout — close stream after MAX_STREAM_LIFETIME_MS.
+      // Client will auto-reconnect via useUsageLive hook.
+      const lifetimeTimer = setTimeout(cleanup, MAX_STREAM_LIFETIME_MS);
 
       // Clean up on client disconnect
       req.signal.addEventListener("abort", () => {
@@ -117,7 +146,7 @@ export async function GET(req: Request) {
       // X-Accel-Buffering: "no" tells Nginx (and Railway's reverse proxy) to
       // disable response buffering for this endpoint. Without it, Nginx collects
       // chunks into larger buffers before forwarding, which defeats SSE's
-      // real-time delivery — events arrive in delayed batches instead of instantly.
+      // real-time delivery — events arrives in delayed batches instead of instantly.
       "X-Accel-Buffering": "no",
     },
   });
