@@ -12,6 +12,7 @@ interface UsageLiveState {
 
 const MAX_BACKOFF_MS = 30_000;
 const BASE_BACKOFF_MS = 1_000;
+const MAX_RETRIES = 20;
 
 export function useUsageLive(userId: number): UsageLiveState {
   const [state, setState] = useState<UsageLiveState>({
@@ -39,13 +40,15 @@ export function useUsageLive(userId: number): UsageLiveState {
 
     es.onmessage = (event) => {
       try {
-        const data = JSON.parse(event.data) as SSEEvent;
+        const data: SSEEvent = JSON.parse(event.data);
         if (data.type === "update") {
           setState((prev) => ({
             ...prev,
             committed: data.committed,
             reserved: data.reserved,
           }));
+        } else if (data.type === "error") {
+          setState((prev) => ({ ...prev, error: data.message }));
         }
       } catch {
         // Ignore malformed messages
@@ -59,6 +62,15 @@ export function useUsageLive(userId: number): UsageLiveState {
         connected: false,
         error: "Connection lost",
       }));
+
+      // Stop retrying after MAX_RETRIES to avoid burning resources
+      if (retriesRef.current >= MAX_RETRIES) {
+        setState((prev) => ({
+          ...prev,
+          error: "Connection lost — max retries exceeded",
+        }));
+        return;
+      }
 
       // Exponential backoff reconnect
       const delay = Math.min(
