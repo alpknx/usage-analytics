@@ -1,8 +1,14 @@
+-- CreateEnum
+CREATE TYPE "PlanTier" AS ENUM ('starter', 'pro', 'executive');
+
+-- CreateEnum
+CREATE TYPE "EventType" AS ENUM ('committed', 'reserved');
+
 -- CreateTable
 CREATE TABLE "users" (
     "id" SERIAL NOT NULL,
     "email" TEXT NOT NULL,
-    "plan" TEXT NOT NULL DEFAULT 'starter',
+    "plan" "PlanTier" NOT NULL DEFAULT 'starter',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
@@ -12,7 +18,7 @@ CREATE TABLE "users" (
 CREATE TABLE "daily_usage_events" (
     "id" SERIAL NOT NULL,
     "user_id" INTEGER NOT NULL,
-    "type" TEXT NOT NULL,
+    "type" "EventType" NOT NULL,
     "date_key" TEXT NOT NULL,
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -45,7 +51,7 @@ CREATE INDEX "daily_usage_cache_user_id_date_key_idx" ON "daily_usage_cache"("us
 CREATE UNIQUE INDEX "daily_usage_cache_user_id_date_key_key" ON "daily_usage_cache"("user_id", "date_key");
 
 -- AddForeignKey
-ALTER TABLE "daily_usage_events" ADD CONSTRAINT "daily_usage_events_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "daily_usage_events" ADD CONSTRAINT "daily_usage_events_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "daily_usage_cache" ADD CONSTRAINT "daily_usage_cache_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE "daily_usage_cache" ADD CONSTRAINT "daily_usage_cache_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

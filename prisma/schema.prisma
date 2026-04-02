@@ -8,12 +8,25 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ─── Existing models (do not modify) ───────────────────────────────
+// ─── Enums ─────────────────────────────────────────────────────────
+
+enum PlanTier {
+  starter
+  pro
+  executive
+}
+
+enum EventType {
+  committed
+  reserved
+}
+
+// ─── Models ────────────────────────────────────────────────────────
 
 model User {
   id        Int      @id @default(autoincrement())
   email     String   @unique
-  plan      String   @default("starter")
+  plan      PlanTier @default(starter)
   createdAt DateTime @default(now()) @map("created_at")
 
   events DailyUsageEvent[]
@@ -23,19 +36,17 @@ model User {
 }
 
 model DailyUsageEvent {
-  id        Int      @id @default(autoincrement())
-  userId    Int      @map("user_id")
-  type      String   // "committed" | "reserved"
-  dateKey   String   @map("date_key") // "YYYY-MM-DD" in UTC
-  createdAt DateTime @default(now()) @map("created_at")
+  id        Int       @id @default(autoincrement())
+  userId    Int       @map("user_id")
+  type      EventType
+  dateKey   String    @map("date_key") // "YYYY-MM-DD" in UTC
+  createdAt DateTime  @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, dateKey])
   @@map("daily_usage_events")
 }
-
-// ─── New model: daily usage cache ──────────────────────────────────
 
 model DailyUsageCache {
   id             Int      @id @default(autoincrement())
@@ -46,7 +57,7 @@ model DailyUsageCache {
   isTodayCache   Boolean  @default(false) @map("is_today_cache")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, dateKey])
   @@index([userId, dateKey])

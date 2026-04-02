@@ -1,9 +1,8 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, EventType } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  // Create a test user
   const user = await prisma.user.upsert({
     where: { email: "demo@fidant.ai" },
     update: {},
@@ -14,7 +13,7 @@ async function main() {
 
   // Generate 14 days of usage events
   const now = new Date();
-  const events: { userId: number; type: string; dateKey: string; createdAt: Date }[] = [];
+  const events: { userId: number; type: EventType; dateKey: string; createdAt: Date }[] = [];
 
   for (let i = 13; i >= 0; i--) {
     const d = new Date(now);
@@ -26,21 +25,21 @@ async function main() {
     for (let j = 0; j < committedCount; j++) {
       events.push({
         userId: user.id,
-        type: "committed",
+        type: EventType.committed,
         dateKey,
         createdAt: new Date(d.getTime() + j * 60_000),
       });
     }
 
-    // A few reserved events for recent days
+    // A few reserved events for recent days (recent timestamps so they pass stale check)
     if (i <= 1) {
       const reservedCount = Math.floor(Math.random() * 5) + 1;
       for (let j = 0; j < reservedCount; j++) {
         events.push({
           userId: user.id,
-          type: "reserved",
+          type: EventType.reserved,
           dateKey,
-          createdAt: new Date(Date.now() - j * 60_000), // recent timestamps
+          createdAt: new Date(Date.now() - j * 60_000),
         });
       }
     }
